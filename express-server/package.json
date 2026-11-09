@@ -1,0 +1,61 @@
+{
+  "name": "auth0-authentication-system-express",
+  "version": "1.0.0",
+  "description": "Production-ready Express.js authentication platform backend with Auth0 integration",
+  "main": "dist/server.js",
+  "type": "module",
+  "author": "technojerry",
+  "engines": {
+    "node": ">=26.0.0"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate:dev": "prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:migrate:reset": "prisma migrate reset",
+    "prisma:studio": "prisma studio",
+    "prisma:db:push": "prisma db push",
+    "prisma:db:seed": "prisma db seed",
+    "db:setup": "npm run prisma:generate && npm run prisma:migrate:dev"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "pino": "^10.4.0",
+    "pino-http": "^11.0.0",
+    "zod": "^4.6.7",
+    "@prisma/client": "^7.10.0",
+    "@prisma/adapter-pg": "^7.10.0",
+    "pg": "^8.16.0",
+    "dotenv": "^16.5.0"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "tsx": "^4.23.15",
+    "@types/node": "^26.0.0",
+    "@types/express": "^5.0.0",
+    "@types/pg": "^8.11.0",
+    "prisma": "^7.10.0",
+    "eslint": "^9.27.0",
+    "@eslint/js": "^9.27.0",
+    "typescript-eslint": "^8.32.0",
+    "prettier": "^3.5.0",
+    "pino-pretty": "^13.2.0"
+  },
+  "keywords": [
+    "auth0",
+    "authentication",
+    "express",
+    "typescript",
+    "prisma",
+    "postgresql"
+  ],
+  "license": "MIT"
+}
