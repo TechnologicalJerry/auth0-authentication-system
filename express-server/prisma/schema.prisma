@@ -1,0 +1,23 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// Future Models (Phase 2+)
+// =============================================================================
+// The following models will be designed and implemented in subsequent phases:
+//
+// - ApplicationUser   (Phase 2: Auth0 Integration)
+// - UserProfile       (Phase 3: User Management)
+// - Role              (Phase 3: Authorization & RBAC)
+// - Permission        (Phase 3: Authorization & RBAC)
+// - UserRole          (Phase 3: Authorization & RBAC)
+// - RolePermission    (Phase 3: Authorization & RBAC)
+// - AuditLog          (Phase 4: Production-Ready Capabilities)
+// =============================================================================
