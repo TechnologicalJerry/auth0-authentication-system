@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken } from '../integrations/auth0/auth0.verifier.js';
+import { usersService } from '../modules/users/users.service.js';
 import { AppError } from '../common/utils/app-error.util.js';
 import { HTTP_STATUS } from '../common/constants/http-status.constants.js';
 import { ErrorCode } from '../common/enums/error-code.enum.js';
@@ -51,15 +52,13 @@ export function extractBearerToken(req: Request): string {
 }
 
 /**
- * Authentication middleware that requires a valid Auth0 access token.
- *
- * - Reads the Authorization header
- * - Requires the Bearer authentication scheme
- * - Verifies the access token against Auth0 JWKS
- * - Attaches the verified user identity to `req.auth`
- * - Passes control to the next middleware only on successful verification
- *
- * Use this middleware to protect routes that require authentication.
+ * Authentication middleware that:
+ * 1. Requires and extracts a valid Auth0 access token
+ * 2. Cryptographically verifies token against Auth0 JWKS
+ * 3. Sets `req.auth` to the verified token identity
+ * 4. Synchronizes/retrieves the local `ApplicationUser` record
+ * 5. Verifies account status (active, non-blocked)
+ * 6. Sets `req.currentUser` with internal ID, roles, and permissions
  */
 export async function authenticate(
   req: Request,
@@ -70,6 +69,11 @@ export async function authenticate(
     const token = extractBearerToken(req);
     const { user } = await verifyAccessToken(token);
     req.auth = user;
+
+    // Synchronize application user and resolve roles/permissions
+    const currentUser = await usersService.syncAuth0User(user);
+    req.currentUser = currentUser;
+
     next();
   } catch (error) {
     next(error);
