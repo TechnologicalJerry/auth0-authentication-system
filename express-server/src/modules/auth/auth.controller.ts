@@ -8,8 +8,8 @@ import { ErrorCode } from '../../common/enums/error-code.enum.js';
 export class AuthController {
   /**
    * GET /api/v1/auth/me
-   * Returns the verified authenticated user identity.
-   * Requires a valid Auth0 access token (enforced by authenticate middleware).
+   * Returns the verified authenticated user identity and application authorization context.
+   * Requires a valid Auth0 access token.
    */
   getMe(req: Request, res: Response): void {
     if (!req.auth) {
@@ -20,7 +20,7 @@ export class AuthController {
       );
     }
 
-    const userData = authService.getMe(req.auth);
+    const userData = authService.getMe(req.auth, req.currentUser);
     sendSuccess(res, HTTP_STATUS.OK, 'Authenticated user retrieved successfully', userData);
   }
 
