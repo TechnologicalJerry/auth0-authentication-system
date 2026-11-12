@@ -1,0 +1,84 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: auth0-express-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: auth0_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d auth0_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - auth0-network
+
+  redis:
+    image: redis:8-alpine
+    container_name: auth0-express-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - auth0-network
+
+  express-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: auth0-express-server
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      API_PREFIX: /api/v1
+      APP_NAME: auth0-authentication-system-express
+      DATABASE_URL: postgresql://user:password@postgres:5432/auth0_db?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_TLS_ENABLED: "false"
+      AUTH0_DOMAIN: ${AUTH0_DOMAIN:-your-tenant.auth0.com}
+      AUTH0_AUDIENCE: ${AUTH0_AUDIENCE:-https://your-api-identifier}
+      AUTH0_ALGORITHMS: RS256
+      RATE_LIMIT_WINDOW_MS: 60000
+      RATE_LIMIT_MAX_REQUESTS: 100
+      RATE_LIMIT_AUTH_MAX_REQUESTS: 20
+      RATE_LIMIT_ADMIN_MAX_REQUESTS: 60
+      CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:4200,http://localhost:5173
+      TRUST_PROXY: "1"
+      SWAGGER_ENABLED: "true"
+      AUTH_CACHE_TTL_SECONDS: 300
+      SHUTDOWN_TIMEOUT_MS: 10000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - auth0-network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  auth0-network:
+    driver: bridge
+
