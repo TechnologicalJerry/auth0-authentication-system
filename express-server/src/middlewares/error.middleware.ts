@@ -40,6 +40,18 @@ export function errorMiddleware(
     return;
   }
 
+  // Handle CORS rejection errors
+  if (err.message && err.message.includes('CORS not allowed')) {
+    logger.warn({ err }, 'CORS origin rejected');
+    sendError(
+      res,
+      HTTP_STATUS.FORBIDDEN,
+      err.message,
+      ErrorCode.FORBIDDEN,
+    );
+    return;
+  }
+
   // Handle unexpected errors
   logger.error({ err }, 'Unexpected error occurred');
 
