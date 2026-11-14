@@ -1,5 +1,7 @@
 import { rolesRepository } from './roles.repository.js';
 import { usersRepository } from '../users/users.repository.js';
+import { authCacheService } from '../../infrastructure/cache/auth-cache.service.js';
+import { auditLogsService } from '../audit-logs/audit-logs.service.js';
 import { AppError } from '../../common/utils/app-error.util.js';
 import { HTTP_STATUS } from '../../common/constants/http-status.constants.js';
 import { ErrorCode } from '../../common/enums/error-code.enum.js';
@@ -46,7 +48,7 @@ export class RolesService {
     };
   }
 
-  async createRole(dto: CreateRoleDto): Promise<RoleResponseDto> {
+  async createRole(dto: CreateRoleDto, actorUserId?: string): Promise<RoleResponseDto> {
     const existing = await rolesRepository.findByName(dto.name);
     if (existing) {
       throw new AppError(
@@ -63,10 +65,19 @@ export class RolesService {
       permissionIds: dto.permissionIds,
     });
 
+    await auditLogsService.log({
+      actorUserId,
+      action: 'ROLE_CREATED',
+      resource: 'role',
+      resourceId: created.id,
+      status: 'SUCCESS',
+      metadata: { name: dto.name, description: dto.description },
+    });
+
     return this.getRoleById(created.id);
   }
 
-  async updateRole(id: string, dto: UpdateRoleDto): Promise<RoleResponseDto> {
+  async updateRole(id: string, dto: UpdateRoleDto, actorUserId?: string): Promise<RoleResponseDto> {
     const role = await rolesRepository.findById(id);
     if (!role) {
       throw new AppError('Role not found', HTTP_STATUS.NOT_FOUND, ErrorCode.ROLE_NOT_FOUND);
@@ -93,10 +104,23 @@ export class RolesService {
     }
 
     await rolesRepository.update(id, dto);
+
+    // If role status or details changed, invalidate cached authorization contexts
+    await authCacheService.invalidateAll();
+
+    await auditLogsService.log({
+      actorUserId,
+      action: 'ROLE_UPDATED',
+      resource: 'role',
+      resourceId: id,
+      status: 'SUCCESS',
+      metadata: { updates: dto },
+    });
+
     return this.getRoleById(id);
   }
 
-  async deleteRole(id: string): Promise<void> {
+  async deleteRole(id: string, actorUserId?: string): Promise<void> {
     const role = await rolesRepository.findById(id);
     if (!role) {
       throw new AppError('Role not found', HTTP_STATUS.NOT_FOUND, ErrorCode.ROLE_NOT_FOUND);
@@ -119,9 +143,23 @@ export class RolesService {
     }
 
     await rolesRepository.delete(id);
+    await authCacheService.invalidateAll();
+
+    await auditLogsService.log({
+      actorUserId,
+      action: 'ROLE_DELETED',
+      resource: 'role',
+      resourceId: id,
+      status: 'SUCCESS',
+      metadata: { name: role.name },
+    });
   }
 
-  async assignRoleToUser(userId: string, roleId: string): Promise<UserRoleAssignmentResponseDto> {
+  async assignRoleToUser(
+    userId: string,
+    roleId: string,
+    actorUserId?: string,
+  ): Promise<UserRoleAssignmentResponseDto> {
     const user = await usersRepository.findById(userId);
     if (!user) {
       throw new AppError('User not found', HTTP_STATUS.NOT_FOUND, ErrorCode.USER_NOT_FOUND);
@@ -146,6 +184,18 @@ export class RolesService {
     }
 
     const assignment = await rolesRepository.assignRoleToUser(userId, roleId);
+
+    // Invalidate user cache on role assignment
+    await authCacheService.invalidateUser(user.auth0UserId);
+
+    await auditLogsService.log({
+      actorUserId,
+      action: 'ROLE_ASSIGNED',
+      resource: 'user_role',
+      resourceId: `${userId}:${roleId}`,
+      status: 'SUCCESS',
+      metadata: { userId, roleId, roleName: role.name },
+    });
 
     return {
       userId,
@@ -185,8 +235,19 @@ export class RolesService {
     }
 
     await rolesRepository.removeRoleFromUser(userId, roleId);
+
+    // Invalidate user cache on role revocation
+    await authCacheService.invalidateUser(user.auth0UserId);
+
+    await auditLogsService.log({
+      actorUserId: currentUserId,
+      action: 'ROLE_REVOKED',
+      resource: 'user_role',
+      resourceId: `${userId}:${roleId}`,
+      status: 'SUCCESS',
+      metadata: { userId, roleId, roleName: role.name },
+    });
   }
 }
 
 export const rolesService = new RolesService();
-
