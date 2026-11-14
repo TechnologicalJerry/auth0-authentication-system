@@ -73,7 +73,11 @@ export class UsersController {
       });
     }
 
-    const updated = await usersService.updateUserByAdmin(paramResult.data.id, bodyResult.data);
+    const updated = await usersService.updateUserByAdmin(
+      paramResult.data.id,
+      bodyResult.data,
+      req.currentUser?.id,
+    );
     sendSuccess(res, HTTP_STATUS.OK, 'User updated successfully', updated);
   }
 
@@ -90,7 +94,11 @@ export class UsersController {
       });
     }
 
-    const updated = await usersService.updateUserStatus(paramResult.data.id, bodyResult.data);
+    const updated = await usersService.updateUserStatus(
+      paramResult.data.id,
+      bodyResult.data,
+      req.currentUser?.id,
+    );
     sendSuccess(res, HTTP_STATUS.OK, 'User status updated successfully', updated);
   }
 }
