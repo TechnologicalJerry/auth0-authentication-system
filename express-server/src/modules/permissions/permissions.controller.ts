@@ -38,6 +38,7 @@ export class PermissionsController {
     const updated = await permissionsService.updateRolePermissions(
       paramResult.data.id,
       bodyResult.data.permissionIds,
+      req.currentUser?.id,
     );
     sendSuccess(res, HTTP_STATUS.OK, 'Role permissions updated successfully', updated);
   }
