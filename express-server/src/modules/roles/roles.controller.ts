@@ -36,7 +36,7 @@ export class RolesController {
       });
     }
 
-    const created = await rolesService.createRole(bodyResult.data);
+    const created = await rolesService.createRole(bodyResult.data, req.currentUser?.id);
     sendSuccess(res, HTTP_STATUS.CREATED, 'Role created successfully', created);
   }
 
@@ -53,7 +53,7 @@ export class RolesController {
       });
     }
 
-    const updated = await rolesService.updateRole(paramResult.data.id, bodyResult.data);
+    const updated = await rolesService.updateRole(paramResult.data.id, bodyResult.data, req.currentUser?.id);
     sendSuccess(res, HTTP_STATUS.OK, 'Role updated successfully', updated);
   }
 
@@ -63,7 +63,7 @@ export class RolesController {
       throw new AppError('Invalid role ID', HTTP_STATUS.BAD_REQUEST, ErrorCode.VALIDATION_ERROR);
     }
 
-    await rolesService.deleteRole(paramResult.data.id);
+    await rolesService.deleteRole(paramResult.data.id, req.currentUser?.id);
     sendSuccess(res, HTTP_STATUS.OK, 'Role deleted successfully', null);
   }
 
@@ -80,7 +80,11 @@ export class RolesController {
       });
     }
 
-    const assignment = await rolesService.assignRoleToUser(paramResult.data.id, bodyResult.data.roleId);
+    const assignment = await rolesService.assignRoleToUser(
+      paramResult.data.id,
+      bodyResult.data.roleId,
+      req.currentUser?.id,
+    );
     sendSuccess(res, HTTP_STATUS.CREATED, 'Role assigned to user successfully', assignment);
   }
 
