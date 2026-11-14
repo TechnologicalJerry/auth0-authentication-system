@@ -9,21 +9,22 @@ datasource db {
 }
 
 model ApplicationUser {
-  id             String     @id @default(uuid()) @db.Uuid
-  auth0UserId    String     @unique @map("auth0_user_id")
-  email          String     @unique
-  emailVerified  Boolean    @default(false) @map("email_verified")
-  firstName      String?    @map("first_name")
-  lastName       String?    @map("last_name")
-  displayName    String?    @map("display_name")
-  profilePicture String?    @map("profile_picture")
-  isActive       Boolean    @default(true) @map("is_active")
-  isBlocked      Boolean    @default(false) @map("is_blocked")
-  lastLoginAt    DateTime?  @map("last_login_at")
-  createdAt      DateTime   @default(now()) @map("created_at")
-  updatedAt      DateTime   @updatedAt @map("updated_at")
+  id             String       @id @default(uuid()) @db.Uuid
+  auth0UserId    String       @unique @map("auth0_user_id")
+  email          String       @unique
+  emailVerified  Boolean      @default(false) @map("email_verified")
+  firstName      String?      @map("first_name")
+  lastName       String?      @map("last_name")
+  displayName    String?      @map("display_name")
+  profilePicture String?      @map("profile_picture")
+  isActive       Boolean      @default(true) @map("is_active")
+  isBlocked      Boolean      @default(false) @map("is_blocked")
+  lastLoginAt    DateTime?    @map("last_login_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
 
   userRoles      UserRole[]
+  auditLogs      AuditLog[]
 
   @@index([auth0UserId])
   @@index([email])
@@ -90,8 +91,27 @@ model RolePermission {
   @@map("role_permissions")
 }
 
-// =============================================================================
-// Future Models (Phase 4+)
-// =============================================================================
-// - AuditLog (Phase 4: Production-Ready Capabilities)
-// =============================================================================
+model AuditLog {
+  id            String           @id @default(uuid()) @db.Uuid
+  actorUserId   String?          @map("actor_user_id") @db.Uuid
+  action        String           @db.VarChar(100)
+  resource      String           @db.VarChar(100)
+  resourceId    String?          @map("resource_id") @db.VarChar(255)
+  status        String           @db.VarChar(50)
+  ipAddress     String?          @map("ip_address") @db.VarChar(45)
+  userAgent     String?          @map("user_agent") @db.Text
+  correlationId String?          @map("correlation_id") @db.VarChar(100)
+  metadata      Json?            @db.JsonB
+  createdAt     DateTime         @default(now()) @map("created_at")
+
+  actor         ApplicationUser? @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([actorUserId])
+  @@index([action])
+  @@index([resource])
+  @@index([resourceId])
+  @@index([status])
+  @@index([correlationId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
