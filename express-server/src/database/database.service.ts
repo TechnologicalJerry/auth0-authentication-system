@@ -42,6 +42,19 @@ export class DatabaseService {
       return false;
     }
   }
+
+  /**
+   * Measure database query response time.
+   */
+  async ping(): Promise<{ healthy: boolean; latencyMs: number }> {
+    const start = Date.now();
+    try {
+      await prisma.$queryRawUnsafe('SELECT 1');
+      return { healthy: true, latencyMs: Date.now() - start };
+    } catch {
+      return { healthy: false, latencyMs: -1 };
+    }
+  }
 }
 
 export const databaseService = new DatabaseService();
