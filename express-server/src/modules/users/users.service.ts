@@ -1,5 +1,7 @@
 import type { AuthenticatedUser } from '../../integrations/auth0/auth0.types.js';
 import { usersRepository } from './users.repository.js';
+import { authCacheService } from '../../infrastructure/cache/auth-cache.service.js';
+import { auditLogsService } from '../audit-logs/audit-logs.service.js';
 import { prisma } from '../../database/prisma.client.js';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants.js';
 import { AppError } from '../../common/utils/app-error.util.js';
@@ -48,15 +50,26 @@ export class UsersService {
       });
 
       if (defaultRole) {
-        await prisma.userRole.create({
-          data: {
-            userId: user.id,
-            roleId: defaultRole.id,
-          },
-        }).catch((err) => {
-          logger.warn({ err }, 'Failed to assign default USER role on registration');
-        });
+        await prisma.userRole
+          .create({
+            data: {
+              userId: user.id,
+              roleId: defaultRole.id,
+            },
+          })
+          .catch((err) => {
+            logger.warn({ err }, 'Failed to assign default USER role on registration');
+          });
       }
+
+      await auditLogsService.log({
+        actorUserId: user.id,
+        action: 'USER_REGISTERED',
+        resource: 'user',
+        resourceId: user.id,
+        status: 'SUCCESS',
+        metadata: { email, auth0UserId: auth0User.sub },
+      });
     } else {
       // Update last login timestamp
       await usersRepository.update(user.id, {
@@ -65,7 +78,8 @@ export class UsersService {
       });
     }
 
-    const context = await usersRepository.getUserContext(auth0User.sub);
+    // Resolve context using Redis authorization cache
+    const context = await authCacheService.getUserContext(auth0User.sub);
 
     if (!context) {
       throw new AppError('User profile could not be resolved', HTTP_STATUS.UNAUTHORIZED, ErrorCode.USER_NOT_FOUND);
@@ -90,7 +104,7 @@ export class UsersService {
       throw new AppError('User not found', HTTP_STATUS.NOT_FOUND, ErrorCode.USER_NOT_FOUND);
     }
 
-    const context = await usersRepository.getUserContext(user.auth0UserId);
+    const context = await authCacheService.getUserContext(user.auth0UserId);
     return this.mapToDto(user, context?.roles, context?.permissions);
   }
 
@@ -107,7 +121,10 @@ export class UsersService {
       ...(dto.profilePicture !== undefined && { profilePicture: dto.profilePicture || null }),
     });
 
-    const context = await usersRepository.getUserContext(updated.auth0UserId);
+    // Invalidate cached authorization context
+    await authCacheService.invalidateUser(existing.auth0UserId);
+
+    const context = await authCacheService.getUserContext(updated.auth0UserId);
     return this.mapToDto(updated, context?.roles, context?.permissions);
   }
 
@@ -125,11 +142,15 @@ export class UsersService {
       throw new AppError('User not found', HTTP_STATUS.NOT_FOUND, ErrorCode.USER_NOT_FOUND);
     }
 
-    const context = await usersRepository.getUserContext(user.auth0UserId);
+    const context = await authCacheService.getUserContext(user.auth0UserId);
     return this.mapToDto(user, context?.roles, context?.permissions);
   }
 
-  async updateUserByAdmin(id: string, dto: AdminUpdateUserDto): Promise<UserResponseDto> {
+  async updateUserByAdmin(
+    id: string,
+    dto: AdminUpdateUserDto,
+    actorUserId?: string,
+  ): Promise<UserResponseDto> {
     const user = await usersRepository.findById(id);
     if (!user) {
       throw new AppError('User not found', HTTP_STATUS.NOT_FOUND, ErrorCode.USER_NOT_FOUND);
@@ -144,11 +165,27 @@ export class UsersService {
       ...(dto.isBlocked !== undefined && { isBlocked: dto.isBlocked }),
     });
 
-    const context = await usersRepository.getUserContext(updated.auth0UserId);
+    // Invalidate cached authorization context
+    await authCacheService.invalidateUser(user.auth0UserId);
+
+    await auditLogsService.log({
+      actorUserId,
+      action: 'USER_UPDATED_BY_ADMIN',
+      resource: 'user',
+      resourceId: id,
+      status: 'SUCCESS',
+      metadata: { updates: dto },
+    });
+
+    const context = await authCacheService.getUserContext(updated.auth0UserId);
     return this.mapToDto(updated, context?.roles, context?.permissions);
   }
 
-  async updateUserStatus(id: string, dto: UpdateUserStatusDto): Promise<UserResponseDto> {
+  async updateUserStatus(
+    id: string,
+    dto: UpdateUserStatusDto,
+    actorUserId?: string,
+  ): Promise<UserResponseDto> {
     const user = await usersRepository.findById(id);
     if (!user) {
       throw new AppError('User not found', HTTP_STATUS.NOT_FOUND, ErrorCode.USER_NOT_FOUND);
@@ -159,7 +196,19 @@ export class UsersService {
       ...(dto.isBlocked !== undefined && { isBlocked: dto.isBlocked }),
     });
 
-    const context = await usersRepository.getUserContext(updated.auth0UserId);
+    // Invalidate cached authorization context
+    await authCacheService.invalidateUser(user.auth0UserId);
+
+    await auditLogsService.log({
+      actorUserId,
+      action: 'USER_STATUS_UPDATED',
+      resource: 'user',
+      resourceId: id,
+      status: 'SUCCESS',
+      metadata: { isActive: dto.isActive, isBlocked: dto.isBlocked },
+    });
+
+    const context = await authCacheService.getUserContext(updated.auth0UserId);
     return this.mapToDto(updated, context?.roles, context?.permissions);
   }
 
@@ -189,4 +238,3 @@ export class UsersService {
 }
 
 export const usersService = new UsersService();
-
