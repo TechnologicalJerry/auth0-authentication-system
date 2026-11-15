@@ -17,6 +17,7 @@ const envSchema = z.object({
   HOST: z.string().default('0.0.0.0'),
   API_PREFIX: z.string().default('/api/v1'),
   APP_NAME: z.string().default('fastify-server'),
+  APP_VERSION: z.string().default('1.0.0'),
   LOG_LEVEL: z
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
     .default('info'),
@@ -25,7 +26,28 @@ const envSchema = z.object({
     .string({
       required_error: 'DATABASE_URL is required',
     })
-    .url({ message: 'DATABASE_URL must be a valid database connection URL' }),
+    .url({ message: 'DATABASE_URL must be a valid database connection URL' })
+    .default('postgresql://auth_user:auth_secure_password_2026@localhost:5432/auth0_auth_db?schema=public'),
+
+  // Auth0 Identity Provider Configuration
+  AUTH0_DOMAIN: z.string().min(1).default('dev-tenant.auth0.com'),
+  AUTH0_ISSUER_BASE_URL: z.string().url().optional(),
+  AUTH0_AUDIENCE: z.string().min(1).default('https://api.auth0-system.com'),
+  AUTH0_CLIENT_ID: z.string().optional(),
+  AUTH0_CLIENT_SECRET: z.string().optional(),
+  AUTH0_ALGORITHMS: z.string().default('RS256'),
+  AUTH0_JWKS_URI: z.string().url().optional(),
+  AUTH0_CLOCK_TOLERANCE: z
+    .string()
+    .default('5')
+    .transform((val) => parseInt(val, 10)),
+  AUTH0_TOKEN_MAX_AGE: z
+    .string()
+    .optional()
+    .transform((val) => (val ? parseInt(val, 10) : undefined)),
+  AUTH0_ROLES_CLAIM_NAMESPACE: z
+    .string()
+    .default('https://api.auth0-system.com/roles'),
 
   ALLOWED_ORIGINS: z
     .string()
@@ -57,4 +79,3 @@ function validateEnv(): EnvConfig {
 }
 
 export const envConfig = validateEnv();
-
