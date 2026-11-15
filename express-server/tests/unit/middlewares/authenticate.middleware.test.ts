@@ -83,3 +83,4 @@ describe('Authentication Middleware', () => {
     expect(req.currentUser?.roles).toContain('USER');
   });
 });
+
