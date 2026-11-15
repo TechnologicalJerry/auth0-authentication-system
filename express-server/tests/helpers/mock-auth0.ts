@@ -67,3 +67,4 @@ export function createMockBearerHeader(tokenSuffix = 'valid-token'): { Authoriza
     Authorization: `Bearer mock.jwt.${tokenSuffix}`,
   };
 }
+
