@@ -66,3 +66,4 @@ describe('Auth0 Claim Mapper', () => {
     expect(user.claims['sub']).toBeUndefined();
   });
 });
+
