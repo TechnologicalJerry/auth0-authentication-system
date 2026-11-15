@@ -28,3 +28,4 @@ describe('Environment Configuration Validation', () => {
     expect(appConfig.rateLimit.adminMaxRequests).toBeLessThanOrEqual(appConfig.rateLimit.maxRequests);
   });
 });
+
