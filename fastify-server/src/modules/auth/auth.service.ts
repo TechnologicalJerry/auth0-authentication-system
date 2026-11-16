@@ -1,0 +1,46 @@
+import type { AuthenticatedUser } from '../../integrations/auth0/auth0.types.js';
+import type { AuthMeResponse, AuthStatusResponse } from './auth.types.js';
+import { appConfig } from '../../config/app.config.js';
+
+export class AuthService {
+  /**
+   * Maps the verified authenticated user to the /me response.
+   * Never exposes raw tokens or sensitive credentials.
+   */
+  getMe(user: AuthenticatedUser, currentUser?: any): AuthMeResponse {
+    return {
+      sub: user.sub,
+      issuer: user.issuer,
+      scopes: user.scopes,
+      permissions: currentUser?.permissions ?? user.permissions,
+      roles: currentUser?.roles ?? user.roles,
+      claims: user.claims,
+      ...(currentUser && {
+        user: {
+          id: currentUser.id,
+          email: currentUser.email,
+          displayName: currentUser.displayName ?? null,
+        },
+      }),
+    };
+  }
+
+  /**
+   * Returns Auth0 integration status.
+   * Reports whether Auth0 is configured without disclosing credentials or JWKS data.
+   */
+  getStatus(): AuthStatusResponse {
+    const { auth0 } = appConfig;
+
+    return {
+      provider: 'Auth0',
+      configured: Boolean(auth0.domain && auth0.audience),
+      domain: auth0.domain,
+      audience: auth0.audience,
+      issuer: auth0.issuerBaseUrl,
+    };
+  }
+}
+
+export const authService = new AuthService();
+
