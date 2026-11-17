@@ -17,9 +17,24 @@ export class HealthController {
   async getReadiness(_request: FastifyRequest, reply: FastifyReply): Promise<void> {
     const readiness = await healthService.getReadiness();
     const statusCode = readiness.ready ? HTTP_STATUS.OK : HTTP_STATUS.SERVICE_UNAVAILABLE;
-    sendSuccess(reply, statusCode, readiness.ready ? 'Application is ready' : 'Application is not ready', readiness);
+    sendSuccess(
+      reply,
+      statusCode,
+      readiness.ready ? 'Application is ready' : 'Application is not ready',
+      readiness,
+    );
+  }
+
+  async getDependencies(_request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const dependencies = await healthService.getDependencies();
+    const statusCode = dependencies.status === 'unhealthy' ? HTTP_STATUS.SERVICE_UNAVAILABLE : HTTP_STATUS.OK;
+    sendSuccess(
+      reply,
+      statusCode,
+      `Dependencies status: ${dependencies.status}`,
+      dependencies,
+    );
   }
 }
 
 export const healthController = new HealthController();
-
