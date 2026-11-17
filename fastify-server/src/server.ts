@@ -1,16 +1,20 @@
 import { buildApp } from './app.js';
 import { appConfig } from './config/app.config.js';
 import { databaseService } from './database/database.service.js';
+import { redisService } from './infrastructure/redis/redis.service.js';
 import { logger } from './services/logger.service.js';
 
 async function bootstrap(): Promise<void> {
   const app = buildApp();
 
   try {
-    // 1. Initialize database connection
+    // 1. Initialize PostgreSQL database connection
     await databaseService.connect();
 
-    // 2. Start HTTP server
+    // 2. Initialize Redis connection pool
+    await redisService.connect();
+
+    // 3. Start HTTP server
     const address = await app.listen({
       port: appConfig.server.port,
       host: appConfig.server.host,
@@ -21,6 +25,7 @@ async function bootstrap(): Promise<void> {
     );
   } catch (err) {
     logger.fatal({ err }, 'Fatal error during server bootstrap');
+    await redisService.disconnect();
     await databaseService.disconnect();
     process.exit(1);
   }
@@ -32,20 +37,25 @@ async function bootstrap(): Promise<void> {
     if (isShuttingDown) return;
     isShuttingDown = true;
 
-    logger.info(`Received ${signal}. Initiating graceful shutdown...`);
+    logger.info(`Received ${signal}. Initiating multi-resource graceful shutdown...`);
 
+    const timeoutMs = appConfig.shutdown.timeoutMs;
     const forceExitTimeout = setTimeout(() => {
-      logger.error('Graceful shutdown timeout exceeded. Forcing termination.');
+      logger.error({ timeoutMs }, 'Graceful shutdown timeout exceeded. Forcing termination.');
       process.exit(1);
-    }, 10000);
+    }, timeoutMs);
     forceExitTimeout.unref();
 
     try {
-      // Close HTTP server and in-flight requests
+      // 1. Close HTTP server and drain in-flight requests
       await app.close();
       logger.info('HTTP server closed cleanly');
 
-      // Close database connection
+      // 2. Disconnect Redis connection pool
+      await redisService.disconnect();
+      logger.info('Redis client disconnected cleanly');
+
+      // 3. Disconnect PostgreSQL database pool
       await databaseService.disconnect();
       logger.info('Database pool drained and disconnected');
 
@@ -74,4 +84,3 @@ async function bootstrap(): Promise<void> {
 }
 
 void bootstrap();
-
