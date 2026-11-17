@@ -1,5 +1,7 @@
 import { permissionsRepository } from './permissions.repository.js';
 import { rolesRepository } from '../roles/roles.repository.js';
+import { authCacheService } from '../../infrastructure/cache/auth-cache.service.js';
+import { auditLogsService } from '../audit-logs/audit-logs.service.js';
 import { AppError } from '../../common/utils/app-error.util.js';
 import { HTTP_STATUS } from '../../common/constants/http-status.constants.js';
 import { ErrorCode } from '../../common/enums/error-code.enum.js';
@@ -33,6 +35,7 @@ export class PermissionsService {
   async updateRolePermissions(
     roleId: string,
     permissionIds: string[],
+    actorUserId?: string,
   ): Promise<RolePermissionsResponseDto> {
     const role = await rolesRepository.findById(roleId);
     if (!role) {
@@ -52,6 +55,18 @@ export class PermissionsService {
     }
 
     await permissionsRepository.updateRolePermissions(roleId, permissionIds);
+
+    // Invalidate all cached authorization contexts because role permissions changed
+    await authCacheService.invalidateAll();
+
+    await auditLogsService.log({
+      actorUserId,
+      action: 'ROLE_PERMISSIONS_UPDATED',
+      resource: 'role_permission',
+      resourceId: roleId,
+      status: 'SUCCESS',
+      metadata: { roleName: role.name, permissionIds },
+    });
 
     return this.getRolePermissions(roleId);
   }
