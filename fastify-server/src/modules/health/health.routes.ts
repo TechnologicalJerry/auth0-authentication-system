@@ -5,5 +5,5 @@ export const healthRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/', (request, reply) => healthController.getHealth(request, reply));
   fastify.get('/live', (request, reply) => healthController.getLiveness(request, reply));
   fastify.get('/ready', (request, reply) => healthController.getReadiness(request, reply));
+  fastify.get('/dependencies', (request, reply) => healthController.getDependencies(request, reply));
 };
-
