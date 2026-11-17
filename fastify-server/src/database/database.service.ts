@@ -41,6 +41,18 @@ export class DatabaseService {
       return false;
     }
   }
+
+  async ping(): Promise<{ healthy: boolean; latencyMs: number }> {
+    const startTime = Date.now();
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      const latencyMs = Date.now() - startTime;
+      return { healthy: true, latencyMs };
+    } catch (err) {
+      logger.warn({ err }, 'Database ping check failed');
+      return { healthy: false, latencyMs: -1 };
+    }
+  }
 }
 
 export const databaseService = new DatabaseService();
