@@ -49,6 +49,65 @@ const envSchema = z.object({
     .string()
     .default('https://api.auth0-system.com/roles'),
 
+  // Redis 8 Configuration
+  REDIS_URL: z.string().optional(),
+  REDIS_HOST: z.string().default('localhost'),
+  REDIS_PORT: z
+    .string()
+    .default('6379')
+    .transform((val) => parseInt(val, 10)),
+  REDIS_USERNAME: z.string().optional(),
+  REDIS_PASSWORD: z.string().optional(),
+  REDIS_TLS_ENABLED: z
+    .string()
+    .default('false')
+    .transform((val) => val === 'true' || val === '1'),
+  REDIS_CONNECT_TIMEOUT: z
+    .string()
+    .default('10000')
+    .transform((val) => parseInt(val, 10)),
+  REDIS_MAX_RETRIES: z
+    .string()
+    .default('5')
+    .transform((val) => parseInt(val, 10)),
+  REDIS_KEY_PREFIX: z.string().default('auth0_fastify:'),
+
+  // Distributed Rate Limiting
+  RATE_LIMIT_WINDOW_MS: z
+    .string()
+    .default('60000')
+    .transform((val) => parseInt(val, 10)),
+  RATE_LIMIT_MAX_REQUESTS: z
+    .string()
+    .default('100')
+    .transform((val) => parseInt(val, 10)),
+  RATE_LIMIT_AUTH_MAX_REQUESTS: z
+    .string()
+    .default('20')
+    .transform((val) => parseInt(val, 10)),
+  RATE_LIMIT_ADMIN_MAX_REQUESTS: z
+    .string()
+    .default('60')
+    .transform((val) => parseInt(val, 10)),
+
+  // Authorization Caching
+  AUTH_CACHE_TTL_SECONDS: z
+    .string()
+    .default('300')
+    .transform((val) => parseInt(val, 10)),
+
+  // Swagger Documentation
+  SWAGGER_ENABLED: z
+    .string()
+    .default('true')
+    .transform((val) => val === 'true' || val === '1'),
+
+  // Graceful Shutdown
+  SHUTDOWN_TIMEOUT_MS: z
+    .string()
+    .default('10000')
+    .transform((val) => parseInt(val, 10)),
+
   ALLOWED_ORIGINS: z
     .string()
     .default('http://localhost:3000,http://localhost:4200,http://localhost:5173')
