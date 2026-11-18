@@ -1,0 +1,80 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: auth0-fastify-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: auth0_auth_db
+      POSTGRES_USER: auth_user
+      POSTGRES_PASSWORD: auth_secure_password_2026
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auth_user -d auth0_auth_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - auth0-network
+
+  redis:
+    image: redis:8-alpine
+    container_name: auth0-fastify-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - auth0-network
+
+  fastify-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: auth0-fastify-server
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      HOST: 0.0.0.0
+      API_PREFIX: /api/v1
+      APP_NAME: fastify-server
+      DATABASE_URL: postgresql://auth_user:auth_secure_password_2026@postgres:5432/auth0_auth_db?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_TLS_ENABLED: "false"
+      AUTH0_DOMAIN: ${AUTH0_DOMAIN:-dev-tenant.auth0.com}
+      AUTH0_AUDIENCE: ${AUTH0_AUDIENCE:-https://api.auth0-system.com}
+      AUTH0_ALGORITHMS: RS256
+      RATE_LIMIT_WINDOW_MS: 60000
+      RATE_LIMIT_MAX_REQUESTS: 100
+      RATE_LIMIT_AUTH_MAX_REQUESTS: 20
+      RATE_LIMIT_ADMIN_MAX_REQUESTS: 60
+      SWAGGER_ENABLED: "true"
+      ALLOWED_ORIGINS: http://localhost:3000,http://localhost:4200,http://localhost:5173
+      TRUST_PROXY: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - auth0-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  auth0-network:
+    driver: bridge
