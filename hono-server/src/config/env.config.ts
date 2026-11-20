@@ -34,6 +34,18 @@ const envSchema = z.object({
     .string()
     .transform((val) => val === 'true')
     .default('false'),
+
+  // Auth0 Identity Provider Configuration
+  AUTH0_DOMAIN: z.string().default('dev-example.us.auth0.com'),
+  AUTH0_AUDIENCE: z.string().default('https://api.auth0-auth-system.local'),
+  AUTH0_ISSUER_BASE_URL: z.string().url().optional(),
+  AUTH0_CLIENT_ID: z.string().optional(),
+  AUTH0_CLIENT_SECRET: z.string().optional(),
+  AUTH0_ALGORITHMS: z.string().default('RS256'),
+  AUTH0_JWKS_URI: z.string().url().optional(),
+  AUTH0_CLOCK_TOLERANCE: z.coerce.number().int().nonnegative().default(5),
+  AUTH0_TOKEN_MAX_AGE: z.coerce.number().int().positive().optional(),
+  AUTH0_ROLES_CLAIM_NAMESPACE: z.string().default('https://api.auth0-auth-system.local/roles'),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;
